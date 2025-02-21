@@ -17,9 +17,9 @@ def api():
             print("Spotify")
             #insert track
             #global connection
-            sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id="ed7c834dad2d41bba8f3642c7ed07350",
-                                                   client_secret="80e2afa04e284dfd90febe557d9375bb",
-                                                   redirect_uri="http://localhost:8888/callback",
+            sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id="", #talk to harrison about authentication
+                                                   client_secret="",
+                                                   redirect_uri="",
                                                    scope="user-library-read"))
             
             #user connection
