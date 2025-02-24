@@ -39,6 +39,8 @@ def api():
             docRef = db.collection('Users').document(params['FirebaseID'])
             for playlist in playlists['items']:
                 docRef.update({
+                        #Union allows for just one item to be put into the database if it already exists,
+                        #Future update is to make it so if it comes from different source we can update the account it came from
                     "playlists" : firestore.ArrayUnion(["playlists", playlist])
                 })
             
