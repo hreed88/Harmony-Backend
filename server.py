@@ -5,12 +5,13 @@
 #It will also handle the database and store all the data.
 
 
-from bottle import route, run, request
+from bottle import route, run, request, response
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import soundcloud_utils
 
 authFile = open("auth.json", "r")
 
@@ -272,10 +273,30 @@ def youtube_api():
 #TODO Note: Soundcloud must be implemented in flutter frontend
 @route("/Soundcloud", method=["POST"])
 def soundcloud_api():
-    pass          
-        # if(params['SoundCloud']):
-        #     print("SoundCloud")
-        #     #TODO implement soundcloud api
+    """Handles SoundCloud authentication and playlist import."""
+    try:
+        params = json.loads(request.body.read())
+    except:
+        params = request.query.decode()
+
+    if "SoundCloud" in params and "FirebaseID" in params:
+        print("SoundCloud Integration")
+
+        access_token = params["SoundCloud"]
+        firebase_id = params["FirebaseID"]
+
+        # Import playlists from SoundCloud using the access token and Firebase ID
+        result = soundcloud_utils.import_soundcloud_playlists(access_token, firebase_id)
+
+        if "error" in result:
+            response.status = 400  # Set HTTP status to 400 if there's an error
+            return result  # Return the error message
+
+        response.status = 200  # Set HTTP status to 200 for successful response
+        return result  # Return success message
+
+    response.status = 400  # Set HTTP status to 400 if the request is invalid
+    return {"error": "Invalid request"}
         
 #-----------------------------------------------------------------------------------------------
 #TODO Note: AppleMusic must be implemented in flutter frontend
