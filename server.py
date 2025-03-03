@@ -12,6 +12,8 @@ from firebase_admin import credentials, firestore
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import soundcloud_utils
+from ytmusicapi import YTMusic
+from ytmusicapi_utils import get_ytmusic_credentials, get_user_info, get_user_playlists
 
 authFile = open("auth.json", "r")
 
@@ -264,10 +266,42 @@ def spotify_api():
 #TODO Note: Youtube must be implemented in flutter frontend
 @route("/Youtube", method=["POST"])
 def youtube_api():
-    pass
-        # if(params['Youtube']):
-        #     print("Youtube")
-        #     #TODO implement youtube api
+    try:
+        params = json.loads(request.body.read())  # Handle incoming params
+    except:
+        params = request.query.decode()
+
+    if "Youtube" in params and "FirebaseID" in params:
+        print("YouTube Music Integration")
+
+        access_token = params["Youtube"]
+        firebase_id = params["FirebaseID"]
+
+        # Initialize YTMusic with credentials
+        ytmusic = get_ytmusic_credentials(access_token)
+
+        if not ytmusic:
+            response.status = 400
+            return {"error": "Failed to authenticate with YouTube Music API"}
+
+        # Fetch user info and playlists
+        user_info = get_user_info(ytmusic)
+        if not user_info:
+            response.status = 400
+            return {"error": "Failed to retrieve user data"}
+
+        playlists = get_user_playlists(ytmusic)
+        if not playlists:
+            response.status = 400
+            return {"error": "Failed to retrieve user playlists"}
+
+        # Process playlists and store in Firebase
+        result = import_youtube_playlists_to_firestore(playlists, firebase_id)
+
+        return {"message": "Playlists imported successfully", "data": result}
+    else:
+        response.status = 400
+        return {"error": "Invalid request"}
 
 #----------------------------------------------------------------------------------------------
 #TODO Note: Soundcloud must be implemented in flutter frontend
