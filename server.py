@@ -153,7 +153,7 @@ def soundcloud_api():
         firebase_id = params["FirebaseID"]
 
         # Import playlists from SoundCloud using the access token and Firebase ID
-        result = soundcloud_utils.import_soundcloud_playlists(access_token, firebase_id)
+        result = soundcloud_utils.import_soundcloud_playlists(access_token, firebase_id,db)
 
         if "error" in result:
             response.status = 400  # Set HTTP status to 400 if there's an error
