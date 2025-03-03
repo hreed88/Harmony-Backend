@@ -1,8 +1,6 @@
 from ytmusicapi import YTMusic
 from firebase_admin import firestore
 
-# Firebase Firestore instance
-db = firestore.client()
 
 # Initialize YTMusic using credentials
 def get_ytmusic_credentials(access_token):
