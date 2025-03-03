@@ -2,6 +2,7 @@ import requests
 from firebase_admin import credentials, firestore
 import firebase_admin
 import json
+import import_utils
 
 
 # SoundCloud API credentials (Ask Ethan for Info)
@@ -52,7 +53,7 @@ def get_soundcloud_playlists(access_token):
     return None
 
 # Imports SoundCloud playlists into Firestore
-def import_soundcloud_playlists(access_token, firebase_id):
+def import_soundcloud_playlists(access_token, firebase_id, db):
     user_info = get_soundcloud_user_info(access_token)
     if not user_info:
         return {"error": "Failed to retrieve SoundCloud user data"}
@@ -77,7 +78,7 @@ def import_soundcloud_playlists(access_token, firebase_id):
                 "URI": track["permalink_url"],
                 "LinkedService": ["SoundCloud"],
             }
-            track_list.append(add_song_to_database(songDocRef, fireBaseDocRef))
+            track_list.append(import_utils.addSongToDataBase(songDocRef, fireBaseDocRef))
 
         playlistDocRef = {
             "Name": playlist["title"],
@@ -89,18 +90,19 @@ def import_soundcloud_playlists(access_token, firebase_id):
             "ExternalURL": playlist["permalink_url"],
             "Owner": playlist["user"]["username"],
         }
-        add_playlist_to_database(playlistDocRef, userDocRef)
+        import_utils.addPlaylistToDatabase(playlistDocRef, userDocRef)
 
     return {"message": "Playlists imported successfully"}
 
 # Adds song to Firestore and returns reference ID
-def add_song_to_database(song, fireBaseDocRef):
-    # Adds song to Firestore and returns reference ID.
-    doc_ref = fireBaseDocRef.document()
-    doc_ref.set(song)
-    return doc_ref.id
+#Depreciated
+# def add_song_to_database(song, fireBaseDocRef):
+#     # Adds song to Firestore and returns reference ID.
+#     doc_ref = fireBaseDocRef.document()
+#     doc_ref.set(song)
+#     return doc_ref.id
 
-# Adds playlist to Firestore under user data
-def add_playlist_to_database(playlist, userDocRef):
-    # Adds playlist to Firestore under user data.
-    userDocRef.collection("Playlists").document().set(playlist)
+# # Adds playlist to Firestore under user data
+# def add_playlist_to_database(playlist, userDocRef):
+#     # Adds playlist to Firestore under user data.
+#     userDocRef.collection("Playlists").document().set(playlist)

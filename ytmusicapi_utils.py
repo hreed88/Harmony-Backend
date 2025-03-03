@@ -1,5 +1,6 @@
 from ytmusicapi import YTMusic
 from firebase_admin import firestore
+import import_utils
 
 
 # Initialize YTMusic using credentials
@@ -31,7 +32,7 @@ def get_user_playlists(ytmusic):
         return None
 
 # Import YouTube Music playlists into Firestore
-def import_youtube_playlists_to_firestore(playlists, firebase_id):
+def import_youtube_playlists_to_firestore(playlists, firebase_id,db):
     userDocRef = db.collection('Users').document(firebase_id)
     fireBaseDocRef = db.collection('Songs')
     result = []
@@ -48,7 +49,7 @@ def import_youtube_playlists_to_firestore(playlists, firebase_id):
                 "LinkedService": ["YouTube Music"],
             }
             # Add song to database
-            song_ref = add_song_to_database(songDocRef, fireBaseDocRef)
+            song_ref = import_utils.addSongToDataBase(songDocRef, fireBaseDocRef)
             track_list.append(song_ref)
 
         playlistDocRef = {
@@ -63,17 +64,18 @@ def import_youtube_playlists_to_firestore(playlists, firebase_id):
         }
 
         # Add playlist to Firestore
-        add_playlist_to_database(playlistDocRef, userDocRef)
+        import_utils.addPlaylistToDataBase(playlistDocRef, userDocRef)
         result.append(playlist["title"])
 
     return result
 
 # Add song to Firestore
-def add_song_to_database(song, fireBaseDocRef):
-    doc_ref = fireBaseDocRef.document()
-    doc_ref.set(song)
-    return doc_ref.id
+#Depreciatied
+# def add_song_to_database(song, fireBaseDocRef):
+#     doc_ref = fireBaseDocRef.document()
+#     doc_ref.set(song)
+#     return doc_ref.id
 
-# Add playlist to Firestore
-def add_playlist_to_database(playlist, userDocRef):
-    userDocRef.collection("Playlists").document().set(playlist)
+# # Add playlist to Firestore
+# def add_playlist_to_database(playlist, userDocRef):
+#     userDocRef.collection("Playlists").document().set(playlist)
