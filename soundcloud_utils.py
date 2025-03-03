@@ -1,8 +1,8 @@
 import requests
-from firebase_admin import firestore
+from firebase_admin import credentials, firestore
+import firebase_admin
+import json
 
-# Load Firebase Firestore
-db = firestore.client()
 
 # SoundCloud API credentials (Ask Ethan for Info)
 authFile = {
@@ -37,7 +37,6 @@ def get_access_token(auth_code):
 
 # Fetches user info from SoundCloud
 def get_soundcloud_user_info(access_token):
-    # Fetches user info from SoundCloud.
     headers = {"Authorization": f"OAuth {access_token}"}
     response = requests.get(USER_INFO_URL, headers=headers)
     if response.status_code == 200:
@@ -46,7 +45,6 @@ def get_soundcloud_user_info(access_token):
 
 # Fetches user playlists from SoundCloud
 def get_soundcloud_playlists(access_token):
-    # Fetches user playlists from SoundCloud.
     headers = {"Authorization": f"OAuth {access_token}"}
     response = requests.get(USER_PLAYLISTS_URL, headers=headers)
     if response.status_code == 200:
@@ -55,7 +53,6 @@ def get_soundcloud_playlists(access_token):
 
 # Imports SoundCloud playlists into Firestore
 def import_soundcloud_playlists(access_token, firebase_id):
-    # Imports SoundCloud playlists into Firestore.
     user_info = get_soundcloud_user_info(access_token)
     if not user_info:
         return {"error": "Failed to retrieve SoundCloud user data"}
