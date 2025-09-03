@@ -5,15 +5,17 @@
 #It will also handle the database and store all the data.
 
 
-from bottle import route, run, request, response
+from bottle import route, run, request, response, hook,static_file
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
+from spotipy.oauth2 import SpotifyOAuth, SpotifyClientCredentials
+import spotify_utils as su
 import soundcloud_utils
 import ytmusicapi_utils
 import import_utils
+import os, requests, json
 
 authFile = open("auth.json", "r")
 
@@ -25,75 +27,64 @@ firebase_admin.initialize_app(cred)
             
 db = firestore.client()
 
+@route('/spotify_auth')
+def spotify_auth():
+    return static_file('spotify_auth.html', root='./')
 
 @route("/Spotify", method=["POST"])
 def spotify_api():
+
+        client_id = os.environ.get("SPOTIFY_CLIENT_ID")
+        client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
+        redirect_uri = os.environ.get("SPOTIFY_REDIRECT_URI")
+
+        print(request)
         try:
-            params = json.loads(request.body.read())
+            params = request.json  # Handle incoming params
             
         except:
-            params = request.query.decode()
-         
+            print("Error")
+            return https_fn.Response("Error")
+            #params = request.query.decode()
+        
+        print(params)
+        thisResponse = ""
         if(params['Spotify']):
             print("Spotify")
             #TODO implement albums 
             #TODO Finish playlist implementation
             #TODO implement user data
-           
+            
             #global connection
-            sp = spotipy.Spotify(auth_manager=SpotifyOAuth(client_id=authFile["Spotify"]["client_id"],
-                                                            client_secret=authFile["Spotify"]["client_secret"],
-                                                            redirect_uri=authFile["Spotify"]["redirect_uri"],
-                                                            scope=authFile["Spotify"]["scope"]))#request info from harrison)
+            sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(client_id=client_id,
+                                                            client_secret=client_secret,))
+                                                            # redirect_uri=authFile["Spotify"]["redirect_uri"],
+                                                            # scope=authFile["Spotify"]["scope"]))#request info from harrison)
             
             #user connection
+            print(sp)
             user = spotipy.Spotify(auth=params['Spotify'])
             userInfo = user.me()
             
             #Check if user wants to import their playlists
+            print(params['Options'])
+            print(params['Options']['Albums'])
             if(params['Options']['Playlists'] == True):
                 print("Importing Playlists")
-                
-                #get user playlists
-                playlists = user.user_playlists(userInfo['id'])
-                
-                #used for setting user data
-                userDocRef = db.collection('Users').document(params['FirebaseID'])
-                #used for setting global songs
-                fireBaseDocRef = db.collection('Songs')
-                i = 0
-                for playlist in playlists['items']:
-                    if i == 6: #TODO remove this in production
-                        break
-                    thisSong = sp.user_playlist_tracks(userInfo['id'], playlist['id'])
-                    songsList = []
-                    for song in thisSong['items']:
-                        song.setdefault(None)
-                        songDocRef = {
-                            'Name' : song['track']['name'],
-                            'Artist' : song['track']['artists'],
-                            'Album' : song['track']['album']['name'],
-                            'Images' : song.get("track").get("album").get("images"),
-                            'URI' : song['track']['uri'],
-                            "LinkedService" : ["Spotify"],
-                        }
-                        #add to global and playlist songs
-                        songsList.append(import_utils.addSongToDataBase(songDocRef, fireBaseDocRef))
-                        #print(songsList)
-                    #add to user playlists songs as reference if not songDocRef in userDocRef.get().to_dict():
-                    playlistDocRef = {
-                        'Name' : playlist['name'],
-                        'Tracks' : {"Tracklist": songsList, "Number of Tracks": len(songsList)},
-                        'LinkedServices' : ['Spotify'],
-                        'Description' : playlist['description'],
-                        'Images' : playlist.get("images"),
-                        'URI' : playlist['uri'],
-                        'ExternalURL' : playlist['external_urls']['spotify'],
-                        'Owner' : playlist['owner'],
-                        
-                    }
-                    import_utils.addPlaylistToDataBase(playlistDocRef, userDocRef)
-                    i += 1
+                try:    
+                    su.importPlaylists(user, userInfo, db, params, sp)
+                    thisResponse = thisResponse + "Playlists imported successfully!"
+                except Exception as e:
+                    print(f"Playlists import failed!{e}")          
+                    return https_fn.Response("Playlists import failed!")
+            
+            #Check if user wants to import their albums
+            if(params['Options']['Albums'] == True):
+                print("Importing Albums")
+                su.importAlbums(user, db, params)
+                thisResponse = thisResponse + " Albums imported successfully!"
+        response.status = 200
+        return{"message": "Playlists imported successfully"}
 
 #----------------------------------------------------------------------------------------------
 #TODO Note: Youtube must be implemented in flutter frontend
@@ -183,6 +174,50 @@ def bandcamp_api():
         # if(params['Bandcamp']):
         #     print("Bandcamp")
         #     #TODO implement bandcamp api
+
+@route("/spotify_token", method=["POST"])
+def spotify_token():
+
+    client_id = os.environ.get("SPOTIFY_CLIENT_ID")
+    client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
+    redirect_uri = os.environ.get("SPOTIFY_REDIRECT_URI")
+    print(redirect_uri)
+
+    data = request.json
+    code = data.get("code")
+
+    if not code:
+        response.status = 400
+        return {"error": "Missing code"}
+
+    token_url = "https://accounts.spotify.com/api/token"
+    payload = {
+        "grant_type": "authorization_code",
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "client_id": client_id,
+        "client_secret": client_secret
+    }
+
+    r = requests.post(token_url, data=payload, headers={
+        "Content-Type": "application/x-www-form-urlencoded"
+    })
+
+    if r.status_code != 200:
+        response.status = r.status_code
+        return r.json()
+
+    return r.json() 
+
+@route("/spotify_client_id", method=["POST"])
+def get_spotify_client_id():
+    
+    # Read your secrets from environment
+    client_id = os.environ.get("SPOTIFY_CLIENT_ID")
+    client_secret = os.environ.get("SPOTIFY_CLIENT_SECRET")
+    redirect_uri = os.environ.get("SPOTIFY_REDIRECT_URI")
+    print("returning" , client_id)
+    return {"ClientID" : client_id}
+                
             
-            
-run(host='192.168.0.31', port=8080)
+run(host='0.0.0.0', port=44303)
